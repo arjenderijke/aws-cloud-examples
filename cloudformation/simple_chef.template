@@ -374,17 +374,22 @@
                 "command" : "tar xvfz /var/chef/chef-repo/jenkins*",
                 "cwd" : "/var/chef/chef-repo/cookbooks"
               },
-              "03_init_berkshelf": {
-                "command" : "berks init /var/chef/chef-repo/cookbooks/jenkins --skip-vagrant --skip-git",
+              "03_remove_conflicts": {
+                "command" : "rm Berksfile && rm .gitignore && rm chefignore",
                 "cwd" : "/var/chef/chef-repo/cookbooks/jenkins",
                 "env" : { "HOME" : "/var/chef" }
               },
-              "04_vendorize_berkshelf" : {
+              "04_init_berkshelf": {
+                "command" : "berks init /var/chef/chef-repo/cookbooks/jenkins",
+                "cwd" : "/var/chef/chef-repo/cookbooks/jenkins",
+                "env" : { "HOME" : "/var/chef" }
+              },
+              "05_vendorize_berkshelf" : {
                 "command" : "berks vendor",
                 "cwd" : "/var/chef/chef-repo/cookbooks/jenkins",
                 "env" : { "HOME" : "/var/chef" }
               },
-              "05_configure_node_run_list" : {
+              "06_configure_node_run_list" : {
                 "command" : "knife node run_list add -z `knife node list -z` recipe[jenkins]",
                 "cwd" : "/var/chef/chef-repo",
                 "env" : { "HOME" : "/var/chef" }
