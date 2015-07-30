@@ -167,7 +167,7 @@
       "Metadata" : {
         "AWS::CloudFormation::Init" : {
           "configSets" : {
-            "chef_install" : ["install_cfn", "install_logs", "install_chef" ]
+            "chef_install" : ["install_cfn", "install_logs", "install_chefsdk", "install_chef", "install_jenkins", "run_chef" ]
           },
           "install_cfn" : {
 	    "packages" : {
@@ -288,6 +288,15 @@
               }
             }
 	  },
+
+          "install_chefsdk" : {
+            "packages" : {
+              "rpm" : {
+                "chefdk" : "https://opscode-omnibus-packages.s3.amazonaws.com/el/6/x86_64/chefdk-0.2.0-2.el6.x86_64.rpm"
+              }
+            }
+          },
+
           "install_chef" : {
             "sources" : {
               "/var/chef/chef-repo" : "http://github.com/opscode/chef-repo/tarball/master"
@@ -332,7 +341,67 @@
                 "env" : { "HOME" : "/var/chef" }
               }
             }
+          },
+
+          "install_jenkins" : {
+            "files" : {
+              "/var/chef/chef-repo/.chef/knife.rb" : {
+                "content" : { "Fn::Join": [ "", [
+                  "cookbook_path [ '/var/chef/chef-repo/cookbooks/jenkins/berks-cookbooks' ]\n",
+                  "node_path [ '/var/chef/chef-repo/nodes' ]\n"
+                ]]},
+                "mode"  : "000400",
+                "owner" : "root",
+                "group" : "root"
+              },
+              "/var/chef/chef-repo/.chef/client.rb" : {
+                "content" : { "Fn::Join": [ "", [
+                  "cookbook_path [ '/var/chef/chef-repo/cookbooks/jenkins/berks-cookbooks' ]\n",
+                  "node_path [ '/var/chef/chef-repo/nodes' ]\n"
+                ]]},
+                "mode"  : "000400",
+                "owner" : "root",
+                "group" : "root"
+              }
+            },
+            "commands" : {
+              "01_get_cookbook" : {
+                "command" : "knife cookbook site download jenkins",
+                "cwd" : "/var/chef/chef-repo",
+                "env" : { "HOME" : "/var/chef" }
+              },
+              "02_unpack_cookbook" : {
+                "command" : "tar xvfz /var/chef/chef-repo/jenkins*",
+                "cwd" : "/var/chef/chef-repo/cookbooks"
+              },
+              "03_init_berkshelf": {
+                "command" : "berks init /var/chef/chef-repo/cookbooks/jenkins --skip-vagrant --skip-git",
+                "cwd" : "/var/chef/chef-repo/cookbooks/jenkins",
+                "env" : { "HOME" : "/var/chef" }
+              },
+              "04_vendorize_berkshelf" : {
+                "command" : "berks vendor",
+                "cwd" : "/var/chef/chef-repo/cookbooks/jenkins",
+                "env" : { "HOME" : "/var/chef" }
+              },
+              "05_configure_node_run_list" : {
+                "command" : "knife node run_list add -z `knife node list -z` recipe[jenkins]",
+                "cwd" : "/var/chef/chef-repo",
+                "env" : { "HOME" : "/var/chef" }
+              }
+            }
+          },
+
+          "run_chef" : {
+            "commands" : {
+              "01_run_chef_client" : {
+                "command" : "chef-client -z -c /var/chef/chef-repo/.chef/client.rb",
+                "cwd" : "/var/chef/chef-repo",
+                "env" : { "HOME" : "/var/chef" }
+              }
+            }
           }
+
 	}
       },
       "Properties" : {
