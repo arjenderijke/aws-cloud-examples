@@ -92,17 +92,82 @@
       "ap-southeast-2"   : {"PV64" : "ami-ff9cecc5", "HVM64" : "ami-fd9cecc7", "HVMG2" : "ami-89790ab3"},
       "sa-east-1"        : {"PV64" : "ami-bb2890a6", "HVM64" : "ami-b52890a8", "HVMG2" : "NOT_SUPPORTED"},
       "cn-north-1"       : {"PV64" : "ami-fa39abc3", "HVM64" : "ami-f239abcb", "HVMG2" : "NOT_SUPPORTED"}
-    }
+    },
 
+    "Region2Principal" : {
+      "us-east-1"      : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" },
+      "us-west-2"      : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" },
+      "us-west-1"      : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" },
+      "eu-west-1"      : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" },
+      "ap-southeast-1" : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" },
+      "ap-northeast-1" : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" },
+      "ap-southeast-2" : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" },
+      "sa-east-1"      : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" },
+      "cn-north-1"     : { "EC2Principal" : "ec2.amazonaws.com.cn", "OpsWorksPrincipal" : "opsworks.amazonaws.com.cn" },
+      "eu-central-1"   : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" }
+    },
+    
+    "Region2ARNPrefix": {
+      "us-east-1"      : { "ARNPrefix": "arn:aws:" },
+      "us-west-1"      : { "ARNPrefix": "arn:aws:" },
+      "us-west-2"      : { "ARNPrefix": "arn:aws:" },
+      "eu-west-1"      : { "ARNPrefix": "arn:aws:" },
+      "ap-northeast-1" : { "ARNPrefix": "arn:aws:" },
+      "ap-southeast-1" : { "ARNPrefix": "arn:aws:" },
+      "ap-southeast-2" : { "ARNPrefix": "arn:aws:" },
+      "sa-east-1"      : { "ARNPrefix": "arn:aws:" },
+      "cn-north-1"     : { "ARNPrefix": "arn:aws-cn:" },
+      "eu-central-1"   : { "ARNPrefix": "arn:aws:" }
+    }
   },
 
   "Resources" : {
-   "EC2Instance" : {
+    "LogRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [ {
+            "Effect": "Allow",
+            "Principal": { "Service": [{ "Fn::FindInMap" : ["Region2Principal", {"Ref" : "AWS::Region"}, "EC2Principal"]}] },
+            "Action": [ "sts:AssumeRole" ]
+        } ] },
+        "Path": "/",
+        "Policies": [ {
+          "PolicyName": "LogRolePolicy",
+          "PolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [ {
+              "Effect": "Allow",
+              "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents", "logs:DescribeLogStreams"],
+              "Resource": [ { "Fn::Join" : ["", [ { "Fn::FindInMap" : ["Region2ARNPrefix", {"Ref" : "AWS::Region"}, "ARNPrefix"] }, 
+                            "logs:*:*:*" ]]}]
+          } ] }
+        } ]
+      }
+    },
+
+    "LogRoleInstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Path": "/",
+        "Roles": [ { "Ref": "LogRole" } ]
+      }
+    },
+
+    "CloudFormationLogs": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "RetentionInDays": 7
+      }
+    },
+
+    "EC2Instance" : {
       "Type" : "AWS::EC2::Instance",
       "Metadata" : {
         "AWS::CloudFormation::Init" : {
           "configSets" : {
-            "chef_install" : ["install_cfn" ]
+            "chef_install" : ["install_cfn", "install_logs" ]
           },
           "install_cfn" : {
 	    "packages" : {
@@ -145,11 +210,83 @@
                               "files" : ["/etc/cfn/cfn-hup.conf", "/etc/cfn/hooks.d/cfn-auto-reloader.conf"] }
               }
             }
-          }
+          },
+	  "install_logs": {
+            "packages" : {
+              "yum" : {
+                "awslogs" : []
+              }
+            },
+
+            "files": {
+              "/etc/awslogs/awslogs.conf": {
+                "content": { "Fn::Join": [ "", [
+                  "[general]\n",
+                  "state_file= /var/awslogs/state/agent-state\n",
+
+                  "[/var/log/cloud-init.log]\n",
+                  "file = /var/log/cloud-init.log\n",
+                  "log_group_name = ", { "Ref": "CloudFormationLogs" }, "\n",
+                  "log_stream_name = {instance_id}/cloud-init.log\n",
+                  "datetime_format = \n",
+
+                  "[/var/log/cloud-init-output.log]\n",
+                  "file = /var/log/cloud-init-output.log\n",
+                  "log_group_name = ", { "Ref": "CloudFormationLogs" }, "\n",
+                  "log_stream_name = {instance_id}/cloud-init-output.log\n",
+                  "datetime_format = \n",
+
+                  "[/var/log/cfn-init.log]\n",
+                  "file = /var/log/cfn-init.log\n",
+                  "log_group_name = ", { "Ref": "CloudFormationLogs" }, "\n",
+                  "log_stream_name = {instance_id}/cfn-init.log\n",
+                  "datetime_format = \n",
+
+                  "[/var/log/cfn-hup.log]\n",
+                  "file = /var/log/cfn-hup.log\n",
+                  "log_group_name = ", { "Ref": "CloudFormationLogs" }, "\n",
+                  "log_stream_name = {instance_id}/cfn-hup.log\n",
+                  "datetime_format = \n",
+
+                  "[/var/log/cfn-wire.log]\n",
+                  "file = /var/log/cfn-wire.log\n",
+                  "log_group_name = ", { "Ref": "CloudFormationLogs" }, "\n",
+                  "log_stream_name = {instance_id}/cfn-wire.log\n",
+                  "datetime_format = \n"
+                ] ] },
+                "mode": "000444",
+                "owner": "root",
+                "group": "root"
+              },
+              "/etc/awslogs/awscli.conf": {
+                "content": { "Fn::Join": [ "", [
+                  "[plugins]\n",
+                  "cwlogs = cwlogs\n",
+                  "[default]\n",
+                  "region = ", { "Ref" : "AWS::Region" }, "\n"
+                ] ] },
+                "mode": "000444",
+                "owner": "root",
+                "group": "root"
+              }
+            },
+            "commands" : {
+              "01_create_state_directory" : {
+                "command" : "mkdir -p /var/awslogs/state"
+              }
+            },
+            "services" : {
+              "sysvinit" : {
+                "awslogs"    : { "enabled" : "true", "ensureRunning" : "true",
+                                 "files" : [ "/etc/awslogs/awslogs.conf" ] }
+              }
+            }
+	  }  
 	}
       },
       "Properties" : {
         "InstanceType" : { "Ref" : "InstanceType" },
+        "IamInstanceProfile" : { "Ref" : "LogRoleInstanceProfile" },
         "SecurityGroups" : [ { "Ref" : "InstanceSecurityGroup" } ],
         "KeyName" : { "Ref" : "KeyName" },
         "ImageId" : { "Fn::FindInMap" : [ "AWSRegionArch2AMI", { "Ref" : "AWS::Region" },
