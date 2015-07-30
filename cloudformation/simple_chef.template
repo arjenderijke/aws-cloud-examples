@@ -167,7 +167,7 @@
       "Metadata" : {
         "AWS::CloudFormation::Init" : {
           "configSets" : {
-            "chef_install" : ["install_cfn", "install_logs" ]
+            "chef_install" : ["install_cfn", "install_logs", "install_chef" ]
           },
           "install_cfn" : {
 	    "packages" : {
@@ -242,6 +242,12 @@
                   "log_stream_name = {instance_id}/cfn-init.log\n",
                   "datetime_format = \n",
 
+                  "[/var/log/cfn-init-cmd.log]\n",
+                  "file = /var/log/cfn-init-cmd.log\n",
+                  "log_group_name = ", { "Ref": "CloudFormationLogs" }, "\n",
+                  "log_stream_name = {instance_id}/cfn-init-cmd.log\n",
+                  "datetime_format = \n",
+
                   "[/var/log/cfn-hup.log]\n",
                   "file = /var/log/cfn-hup.log\n",
                   "log_group_name = ", { "Ref": "CloudFormationLogs" }, "\n",
@@ -281,7 +287,52 @@
                                  "files" : [ "/etc/awslogs/awslogs.conf" ] }
               }
             }
-	  }  
+	  },
+          "install_chef" : {
+            "sources" : {
+              "/var/chef/chef-repo" : "http://github.com/opscode/chef-repo/tarball/master"
+            },
+            "files" : {
+              "/tmp/install.sh" : {
+                "source" : "https://www.opscode.com/chef/install.sh",
+                "mode"  : "000400",
+                "owner" : "root",
+                "group" : "root"
+              },
+              "/var/chef/chef-repo/.chef/knife.rb" : {
+                "content" : { "Fn::Join": [ "", [
+                  "cookbook_path [ '/var/chef/chef-repo/cookbooks' ]\n",
+                  "node_path [ '/var/chef/chef-repo/nodes' ]\n"
+                ]]},
+                "mode"  : "000400",
+                "owner" : "root",
+                "group" : "root"
+              },
+              "/var/chef/chef-repo/.chef/client.rb" : {
+                "content" : { "Fn::Join": [ "", [
+                  "cookbook_path [ '/var/chef/chef-repo/cookbooks' ]\n",
+                  "node_path [ '/var/chef/chef-repo/nodes' ]\n"
+                ]]},
+                "mode"  : "000400",
+                "owner" : "root",
+                "group" : "root"
+              }
+            },
+            "commands" : {
+              "01_make_chef_readable" : {
+                "command" : "chmod +rx /var/chef"
+              },
+              "02_install_chef" : {
+                "command" : "bash /tmp/install.sh",
+                "cwd"  : "/var/chef"
+              },
+              "03_create_node_list" : {
+                "command" : "chef-client -z -c /var/chef/chef-repo/.chef/client.rb",
+                "cwd" : "/var/chef/chef-repo",
+                "env" : { "HOME" : "/var/chef" }
+              }
+            }
+          }
 	}
       },
       "Properties" : {
