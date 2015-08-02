@@ -174,7 +174,8 @@
 	      "yum" : {
 	        "gcc" : [],
 		"autoconf" : [],
-		"libtool" : []
+		"libtool" : [],
+		"git" : []
 	      }
 	    },
             "files": {
@@ -292,7 +293,7 @@
           "install_chefsdk" : {
             "packages" : {
               "rpm" : {
-                "chefdk" : "https://opscode-omnibus-packages.s3.amazonaws.com/el/6/x86_64/chefdk-0.2.0-2.el6.x86_64.rpm"
+                "chefdk" : "https://opscode-omnibus-packages.s3.amazonaws.com/el/7/x86_64/chefdk-0.6.2-1.el7.x86_64.rpm"
               }
             }
           },
@@ -375,12 +376,12 @@
                 "cwd" : "/var/chef/chef-repo/cookbooks"
               },
               "03_remove_conflicts": {
-                "command" : "rm Berksfile && rm .gitignore && rm chefignore",
+                "command" : "rm Berksfile && rm chefignore",
                 "cwd" : "/var/chef/chef-repo/cookbooks/jenkins",
                 "env" : { "HOME" : "/var/chef" }
               },
               "04_init_berkshelf": {
-                "command" : "berks init /var/chef/chef-repo/cookbooks/jenkins",
+                "command" : "berks init /var/chef/chef-repo/cookbooks/jenkins --skip-vagrant --skip-git --no-foodcritic --skip-test-kitchen --no-bundler --no-scmversion",
                 "cwd" : "/var/chef/chef-repo/cookbooks/jenkins",
                 "env" : { "HOME" : "/var/chef" }
               },
