@@ -391,7 +391,7 @@
                 "env" : { "HOME" : "/var/chef" }
               },
               "06_configure_node_run_list" : {
-                "command" : "knife node run_list add -z `knife node list -z` recipe[jenkins]",
+                "command" : "knife node run_list add -z `knife node list -z` recipe[jenkins::master]",
                 "cwd" : "/var/chef/chef-repo",
                 "env" : { "HOME" : "/var/chef" }
               }
