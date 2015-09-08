@@ -175,7 +175,7 @@
       "Metadata" : {
         "AWS::CloudFormation::Init" : {
           "configSets" : {
-            "chef_install" : ["install_cfn", "install_logs" ]
+            "chef_install" : ["install_cfn", "install_logs", "install_monetdb" ]
           },
           "install_cfn" : {
 	    "packages" : {
@@ -296,8 +296,66 @@
                                  "files" : [ "/etc/awslogs/awslogs.conf" ] }
               }
             }
+	  },
+	  "install_monetdb": {
+            "packages" : {
+              "yum" : {
+	      	    "ant" : [],
+		    "autoconf" : [],
+		    "automake" : [],
+		    "libtool" : [],
+		    "flex" : [],
+		    "bison" : [],
+		    "libxml2-devel" : [],
+		    "pcre-devel" : [],
+		    "openssl-devel" : [],
+		    "gettext-devel" : [],
+		    "rpmdevtools" : [],
+		    "python34-devel" : [],
+		    "emacs" : []
+              }
+            },
+            "commands" : {
+              "01_enable_epel" : {
+                "command" : "yum-config-manager --enable epel"
+              },
+              "02_yum_update" : {
+                "command" : "yum -y update"
+              },
+              "03_install_samtools" : {
+                "command" : "yum -y install samtools samtools-devel"
+              },
+              "04_get_monetdb_source" : {
+                "command" : "aws --region eu-central-1 s3 cp s3://blackgemsource/MonetDB-11.21.5.zip /home/ec2-user/"
+              },
+              "05_make_build_dir" : {
+                "command" : "mkdir /home/ec2-user/build"
+              },
+              "06_unzip_source" : {
+                "command" : "unzip MonetDB-11.21.5.zip",
+                "cwd" : "/home/ec2-user/"
+              },
+              "07_bootstrap" : {
+                "command" : "./bootstrap",
+                "cwd" : "/home/ec2-user/MonetDB-11.21.5"
+              },
+              "08_configure" : {
+                "command" : "/home/ec2-user/MonetDB-11.21.5/configure --prefix=/home/ec2-user/install --with-samtools=no",
+                "cwd" : "/home/ec2-user/build",
+		"env" : { "JAVA_HOME" : "/usr/lib/jvm/java", "PATH" : "/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:/opt/aws/bin" }
+              },
+              "09_make" : {
+                "command" : "make",
+                "cwd" : "/home/ec2-user/build",
+		"env" : { "JAVA_HOME" : "/usr/lib/jvm/java", "PATH" : "/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:/opt/aws/bin" }
+              },
+              "10_make_install" : {
+                "command" : "make install",
+                "cwd" : "/home/ec2-user/build",
+		"env" : { "JAVA_HOME" : "/usr/lib/jvm/java", "PATH" : "/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:/opt/aws/bin" }
+              }
+            }
 	  }
-
 	}
       },
       "Properties" : {
