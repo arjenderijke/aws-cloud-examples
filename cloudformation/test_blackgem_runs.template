@@ -142,9 +142,17 @@
               "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents", "logs:DescribeLogStreams"],
               "Resource": [ { "Fn::Join" : ["", [ { "Fn::FindInMap" : ["Region2ARNPrefix", {"Ref" : "AWS::Region"}, "ARNPrefix"] }, 
                             "logs:*:*:*" ]]}]
-          } ] }
-        } ]
-      }
+          },
+	  {
+		"Effect": "Allow",
+		"Action": [
+		"s3:Get*",
+		"s3:List*"
+		],
+		"Resource": [ "*" ]
+		}
+	  ] }
+        } ] }
     },
 
     "LogRoleInstanceProfile": {
