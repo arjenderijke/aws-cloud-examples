@@ -175,7 +175,7 @@
       "Metadata" : {
         "AWS::CloudFormation::Init" : {
           "configSets" : {
-            "chef_install" : ["install_cfn", "install_logs", "install_monetdb" ]
+            "chef_install" : ["install_cfn", "install_logs", "install_monetdb", "install_blackgem" ]
           },
           "install_cfn" : {
 	    "packages" : {
@@ -288,6 +288,12 @@
             "commands" : {
               "01_create_state_directory" : {
                 "command" : "mkdir -p /var/awslogs/state"
+              },
+              "02_enable_epel" : {
+                "command" : "yum-config-manager --enable epel"
+              },
+              "03_yum_update" : {
+                "command" : "yum -y update"
               }
             },
             "services" : {
@@ -312,21 +318,28 @@
 		    "gettext-devel" : [],
 		    "rpmdevtools" : [],
 		    "python34-devel" : [],
-		    "emacs" : []
+		    "emacs" : [],
+		    "cfitsio-devel" : [],
+		    "pyfits" : []
               }
             },
-            "commands" : {
-              "01_enable_epel" : {
-                "command" : "yum-config-manager --enable epel"
-              },
-              "02_yum_update" : {
-                "command" : "yum -y update"
-              },
+            "files": {
+              "/home/ec2-user/.monetdb": {
+                "content": { "Fn::Join": [ "", [
+                  "user=monetdb\n",
+                  "password=monetdb\n"
+		  ]]},
+                "mode": "000600",
+                "owner": "ec2-user",
+                "group": "ec2-user"
+              }
+            },
+	    "commands" : {
               "03_install_samtools" : {
                 "command" : "yum -y install samtools samtools-devel"
               },
               "04_get_monetdb_source" : {
-                "command" : "aws --region eu-central-1 s3 cp s3://blackgemsource/MonetDB-11.21.5.zip /home/ec2-user/"
+                "command" : "aws --region eu-central-1 s3 cp s3://blackgemzips/MonetDB-11.21.5.zip /home/ec2-user/"
               },
               "05_make_build_dir" : {
                 "command" : "mkdir /home/ec2-user/build"
@@ -355,6 +368,29 @@
 		"env" : { "JAVA_HOME" : "/usr/lib/jvm/java", "PATH" : "/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:/opt/aws/bin" }
               }
             }
+	  },
+	  "install_blackgem": {
+            "commands" : {
+              "01_get_blackgem_source" : {
+                "command" : "aws --region eu-central-1 s3 cp s3://blackgemzips/blackgem-778e07ac37a0.zip /home/ec2-user/"
+              },
+              "02_make_img_dir" : {
+                "command" : "mkdir /home/ec2-user/blackgemimages"
+              },
+              "03_unzip_source" : {
+                "command" : "unzip blackgem-778e07ac37a0.zip",
+                "cwd" : "/home/ec2-user/"
+              },
+              "04_chown_code" : {
+                "command" : "chown -R ec2-user.ec2-user /home/ec2-user/blackgem-778e07ac37a0"
+              },
+              "05_get_blackgem_images" : {
+                "command" : "aws --region eu-central-1 s3 cp s3://blackgemsmall/ /home/ec2-user/blackgemimages/ --recursive"
+              },
+              "06_chown_images" : {
+                "command" : "chown -R ec2-user.ec2-user /home/ec2-user/blackgemimages"
+              }
+	    }
 	  }
 	}
       },
