@@ -171,7 +171,21 @@
 		"s3:List*"
 		],
 		"Resource": [ "*" ]
-		}
+		},
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:PutObject",
+                                        "s3:List*"
+                                    ],
+                                    "Resource": [ {
+                                        "Fn::Join" : [ "", [
+                                            "arn:aws:s3:::",
+                                            { "Ref" : "OutputBucket" },
+                                            "/*"
+                                        ]]
+                                    }]
+                                }
 	  ] }
         } ] }
     },
@@ -425,6 +439,31 @@
               },
               "06_chown_images" : {
                 "command" : "chown -R ec2-user.ec2-user /home/ec2-user/blackgemimages"
+              },
+              "07_get_cron_script" : {
+                  "command" : {
+                     "Fn::Join" : [ "", [
+                         "aws --region eu-central-1 s3 cp s3://",
+                         { "Ref" : "SourceBucket" },
+                         "/blackgem_run.sh /home/ec2-user/blackgem_run.sh" ]]
+                 }
+              },
+              "08_chmod_script" : {
+                "command" : "chmod +x /home/ec2-user/blackgem_run.sh"
+              },
+              "09_chown_images" : {
+                "command" : "chown ec2-user.ec2-user /home/ec2-user/blackgem_run.sh"
+              },
+              "10_get_cron_job" : {
+                  "command" : {
+                     "Fn::Join" : [ "", [
+                         "aws --region eu-central-1 s3 cp s3://",
+                         { "Ref" : "SourceBucket" },
+                         "/blackgemruncron /etc/cron.d/blackgemruncron" ]]
+                 }
+              },
+              "11_restart_cron" : {
+                "command" : "/sbin/service crond restart"
               }
 	    }
 	  }
