@@ -28,6 +28,27 @@
       "Default": "0.0.0.0/0",
       "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
       "ConstraintDescription": "must be a valid IP CIDR range of the for x.x.x.x/x."
+    },
+
+    "SourceBucket" : {
+      "Description" : "S3 bucket for downloading source zips",
+      "Type" : "String",
+      "Default" : "blackgemzips",
+      "ConstraintDescription" : "Must be a valid S3 Bucket"
+    },
+
+    "DataBucket" : {
+	"Description" : "S3 bucket for downloading fits files",
+	"Type" : "String",
+	"Default" : "blackgemsmall",
+	"ConstraintDescription" : "Must be a valid S3 Bucket"
+    },
+
+    "OutputBucket" : {
+	"Description" : "S3 bucket for uploading run logs",
+	"Type" : "String",
+	"Default" : "blackgemruns",
+	"ConstraintDescription" : "Must be a valid S3 Bucket"
     }
 
   },
@@ -338,8 +359,12 @@
               "03_install_samtools" : {
                 "command" : "yum -y install samtools samtools-devel"
               },
-              "04_get_monetdb_source" : {
-                "command" : "aws --region eu-central-1 s3 cp s3://blackgemzips/MonetDB-11.21.5.zip /home/ec2-user/"
+		"04_get_monetdb_source" : {
+		    "command" : {
+		    "Fn::Join" : [ "", [
+				   "aws --region eu-central-1 s3 cp s3://",
+				   { "Ref" : "SourceBucket" },
+				   "/MonetDB-11.21.5.zip /home/ec2-user/"]] }
               },
               "05_make_build_dir" : {
                 "command" : "mkdir /home/ec2-user/build"
@@ -372,7 +397,13 @@
 	  "install_blackgem": {
             "commands" : {
               "01_get_blackgem_source" : {
-                "command" : "aws --region eu-central-1 s3 cp s3://blackgemzips/blackgem-778e07ac37a0.zip /home/ec2-user/"
+                  "command" : {
+		      "Fn::Join" : [ "", [
+			  "aws --region eu-central-1 s3 cp s3://",
+			  { "Ref" : "SourceBucket" },
+			  "/blackgem-778e07ac37a0.zip /home/ec2-user/"
+			  ]]
+		  }
               },
               "02_make_img_dir" : {
                 "command" : "mkdir /home/ec2-user/blackgemimages"
@@ -385,7 +416,12 @@
                 "command" : "chown -R ec2-user.ec2-user /home/ec2-user/blackgem-778e07ac37a0"
               },
               "05_get_blackgem_images" : {
-                "command" : "aws --region eu-central-1 s3 cp s3://blackgemsmall/ /home/ec2-user/blackgemimages/ --recursive"
+                  "command" : {
+		      "Fn::Join" : [ "", [
+			  "aws --region eu-central-1 s3 cp s3://",
+			  { "Ref" : "DataBucket" },
+			  "/ /home/ec2-user/blackgemimages/ --recursive" ]]
+		  }
               },
               "06_chown_images" : {
                 "command" : "chown -R ec2-user.ec2-user /home/ec2-user/blackgemimages"
