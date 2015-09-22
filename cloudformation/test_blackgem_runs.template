@@ -1,7 +1,7 @@
 {
   "AWSTemplateFormatVersion" : "2010-09-09",
 
-  "Description" : "Install ec2 instance and run blackgem pipeline",
+  "Description" : "Install ec2 instances using an autoscale group and run the blackgem pipeline",
 
   "Parameters" : {
 
@@ -49,6 +49,15 @@
 	"Type" : "String",
 	"Default" : "blackgemruns",
 	"ConstraintDescription" : "Must be a valid S3 Bucket"
+    },
+
+    "TestRunCapacity": {
+      "Default": "1",
+      "Description" : "The number of EC2 instances",
+      "Type": "Number",
+      "MinValue": "1",
+      "MaxValue": "5",
+      "ConstraintDescription" : "must be between 1 and 5 EC2 instances."
     }
 
   },
@@ -205,8 +214,33 @@
       }
     },
 
-    "EC2Instance" : {
-      "Type" : "AWS::EC2::Instance",
+    "TestRunGroup" : {
+      "Type" : "AWS::AutoScaling::AutoScalingGroup",
+      "Properties" : {
+        "AvailabilityZones" : { "Fn::GetAZs" : "" },
+        "LaunchConfigurationName" : { "Ref" : "LaunchConfig" },
+        "MinSize" : "1",
+        "MaxSize" : "5",
+        "DesiredCapacity" : { "Ref" : "TestRunCapacity" }
+      },
+      "CreationPolicy" : {
+        "ResourceSignal" : {
+	  "Count" : { "Ref" : "TestRunCapacity" },
+          "Timeout" : "PT30M"
+        }
+      },
+      "UpdatePolicy": {
+        "AutoScalingRollingUpdate": {
+          "MinInstancesInService": "1",
+          "MaxBatchSize": "1",
+          "PauseTime" : "PT30M",
+          "WaitOnResourceSignals": "true"
+        }
+      }
+    },
+
+    "LaunchConfig": {
+      "Type" : "AWS::AutoScaling::LaunchConfiguration",
       "Metadata" : {
         "AWS::CloudFormation::Init" : {
           "configSets" : {
@@ -236,10 +270,10 @@
                 "content": { "Fn::Join": [ "", [
                   "[cfn-auto-reloader-hook]\n",
                   "triggers=post.update\n",
-                  "path=Resources.EC2Instance.Metadata.AWS::CloudFormation::Init\n",
+                  "path=Resources.LaunchConfig.Metadata.AWS::CloudFormation::Init\n",
                   "action=/opt/aws/bin/cfn-init -v ",
                           "         --stack ", { "Ref" : "AWS::StackName" },
-                          "         --resource EC2Instance ",
+                          "         --resource LaunchConfig ",
                           "         --configsets chef_install ",
                           "         --region ", { "Ref" : "AWS::Region" }, "\n"
                 ]]},
@@ -482,13 +516,13 @@
 
                        "/opt/aws/bin/cfn-init -v ",
                        "         --stack ", { "Ref" : "AWS::StackName" },
-                       "         --resource EC2Instance ",
+                       "         --resource LaunchConfig ",
                        "         --configsets chef_install ",
                        "         --region ", { "Ref" : "AWS::Region" }, "\n",
 
                        "/opt/aws/bin/cfn-signal -e $? ",
                        "         --stack ", { "Ref" : "AWS::StackName" },
-                       "         --resource EC2Instance ",
+                       "         --resource TestRunGroup ",
                        "         --region ", { "Ref" : "AWS::Region" }, "\n"
         ]]}}
 	}
@@ -507,24 +541,6 @@
       }
     }
 
-  },
-
-  "Outputs" : {
-    "InstanceId" : {
-      "Description" : "InstanceId of the newly created EC2 instance",
-      "Value" : { "Ref" : "EC2Instance" }
-    },
-    "AZ" : {
-      "Description" : "Availability Zone of the newly created EC2 instance",
-      "Value" : { "Fn::GetAtt" : [ "EC2Instance", "AvailabilityZone" ] }
-    },
-    "PublicDNS" : {
-      "Description" : "Public DNSName of the newly created EC2 instance",
-      "Value" : { "Fn::GetAtt" : [ "EC2Instance", "PublicDnsName" ] }
-    },
-    "PublicIP" : {
-      "Description" : "Public IP address of the newly created EC2 instance",
-      "Value" : { "Fn::GetAtt" : [ "EC2Instance", "PublicIp" ] }
-    }
   }
+
 }
