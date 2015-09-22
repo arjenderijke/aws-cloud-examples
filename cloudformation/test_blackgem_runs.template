@@ -56,7 +56,7 @@
       "Description" : "The number of EC2 instances",
       "Type": "Number",
       "MinValue": "1",
-      "MaxValue": "5",
+      "MaxValue": "9",
       "ConstraintDescription" : "must be between 1 and 5 EC2 instances."
     }
 
@@ -164,37 +164,46 @@
         } ] },
         "Path": "/",
         "Policies": [ {
-          "PolicyName": "LogRolePolicy",
-          "PolicyDocument": {
-            "Version": "2012-10-17",
-            "Statement": [ {
-              "Effect": "Allow",
-              "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents", "logs:DescribeLogStreams"],
-              "Resource": [ { "Fn::Join" : ["", [ { "Fn::FindInMap" : ["Region2ARNPrefix", {"Ref" : "AWS::Region"}, "ARNPrefix"] }, 
-                            "logs:*:*:*" ]]}]
-          },
-	  {
-		"Effect": "Allow",
-		"Action": [
-		"s3:Get*",
-		"s3:List*"
-		],
-		"Resource": [ "*" ]
+            "PolicyName": "LogRolePolicy",
+            "PolicyDocument": {
+		"Version": "2012-10-17",
+		"Statement": [ {
+		    "Effect": "Allow",
+		    "Action": ["logs:CreateLogGroup",
+			       "logs:CreateLogStream",
+			       "logs:PutLogEvents",
+			       "logs:DescribeLogStreams"],
+		    "Resource": [ { "Fn::Join" : ["", [ { "Fn::FindInMap" : ["Region2ARNPrefix", {"Ref" : "AWS::Region"}, "ARNPrefix"] }, "logs:*:*:*" ]]}]
 		},
-                                {
-                                    "Effect": "Allow",
-                                    "Action": [
-                                        "s3:PutObject",
-                                        "s3:List*"
-                                    ],
-                                    "Resource": [ {
-                                        "Fn::Join" : [ "", [
-                                            "arn:aws:s3:::",
-                                            { "Ref" : "OutputBucket" },
-                                            "/*"
-                                        ]]
-                                    }]
-                                }
+		{
+		    "Effect": "Allow",
+		    "Action": [
+			"s3:Get*",
+			"s3:List*"
+		    ],
+		    "Resource": [ "*" ]
+		},
+		{
+                    "Effect": "Allow",
+                    "Action": [
+                        "s3:PutObject",
+                        "s3:List*"
+                    ],
+                    "Resource": [ {
+                        "Fn::Join" : [ "", [
+                            "arn:aws:s3:::",
+                            { "Ref" : "OutputBucket" },
+                            "/*"
+                        ]]
+                    }]
+                },
+		{
+		    "Effect": "Allow",
+		    "Action": [
+			"dynamodb:PutItem"
+		    ],
+		    "Resource": [ "arn:aws:dynamodb:eu-central-1:*:table/blackgemruns" ]
+		}
 	  ] }
         } ] }
     },
@@ -443,6 +452,21 @@
             }
 	  },
 	  "install_blackgem": {
+            "files": {
+              "/home/ec2-user/instance-data.txt": {
+                "content": { "Fn::Join": [ "", [
+                    "INSTANCE_TYPE=",
+                    { "Ref" : "InstanceType" }, "\n",
+		    "DATA_BUCKET=",
+                    { "Ref" : "DataBucket" }, "\n",
+                    "STACK_NAME=",
+		    { "Ref": "AWS::StackId" }, "\n"
+		  ]]},
+                "mode": "000644",
+                "owner": "ec2-user",
+                "group": "ec2-user"
+              }
+            },
             "commands" : {
               "01_get_blackgem_source" : {
                   "command" : {
