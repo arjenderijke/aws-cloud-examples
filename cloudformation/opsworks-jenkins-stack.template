@@ -1,0 +1,173 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Parameters" : {
+    "BucketName" : {
+      "Description" : "The EC2 Bucket",
+      "Type" : "String"
+    },
+
+    "KeyName": {
+      "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instances",
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "ConstraintDescription" : "must be the name of an existing EC2 KeyPair."
+    },
+
+    "SSHLocation" : {
+      "Description" : "The IP address range that can be used to SSH to the EC2 instances",
+      "Type": "String",
+      "MinLength": "9",
+      "MaxLength": "18",
+      "Default": "0.0.0.0/0",
+      "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+      "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
+    }
+  },
+
+  "Resources": {
+    "FirstStack": {
+      "Type": "AWS::OpsWorks::Stack",
+      "Properties": {
+        "DefaultAvailabilityZone": "eu-central-1a",
+        "DefaultInstanceProfileArn": { "Fn::Join" : ["", [
+          "arn:aws:iam::",
+          { "Ref" : "AWS::AccountId" },
+          ":instance-profile/aws-opsworks-ec2-role" ]] },
+        "DefaultSshKeyName": { "Ref" : "KeyName" },
+        "DefaultOs": "Amazon Linux 2015.09",
+        "Name": "FirstStack",
+        "HostnameTheme": "Layer_Dependent",
+        "ServiceRoleArn": { "Fn::Join" : ["", [
+          "arn:aws:iam::",
+          { "Ref" : "AWS::AccountId" },
+          ":role/aws-opsworks-service-role" ]] },
+        "UseCustomCookbooks": "true",
+        "CustomCookbooksSource" : {
+          "Type" : "s3",
+          "Url" : { "Fn::Join" : ["", ["https://s3.",
+            { "Ref" : "AWS::Region" },
+            ".amazonaws.com/",
+            { "Ref": "BucketName" },
+            "/cookbooks.tar.gz"  ]]}
+        },
+        "UseOpsworksSecurityGroups": "true",
+        "Attributes": {
+          "Color": "rgb(45, 114, 184)"
+        },
+        "ConfigurationManager": {
+          "Name": "Chef",
+          "Version": "12"
+        }
+      }
+    },
+    "appJenkins1": {
+      "Type": "AWS::OpsWorks::App",
+      "Properties": {
+        "Name": "Jenkins",
+        "Shortname": "jenkins",
+        "Type": "other",
+        "StackId": {
+          "Ref": "FirstStack"
+        },
+        "AppSource": {
+          "Type": "archive",
+          "Url": "http://mirrors.jenkins-ci.org/war/latest/jenkins.war"
+        },
+        "Attributes": {
+          "AutoBundleOnDeploy": "true",
+          "AwsFlowRubySettings": "{}"
+        }
+      }
+    },
+    "layerJenkinsServer1": {
+      "Type": "AWS::OpsWorks::Layer",
+      "Properties": {
+        "AutoAssignElasticIps": "false",
+        "AutoAssignPublicIps": "true",
+        "EnableAutoHealing": "true",
+        "Name": "Jenkins Server",
+        "Shortname": "jenkinsserver",
+        "Type": "custom",
+        "StackId": {
+          "Ref": "FirstStack"
+        },
+        "CustomRecipes": {
+          "Setup": [
+            "opsworks-first::default"
+          ],
+          "Deploy": [
+            "opsworks-first::default"
+          ]
+        },
+        "CustomSecurityGroupIds" : [
+          { "Fn::GetAtt" : [ "JenkinsInstanceSecurityGroup", "GroupId" ]}
+        ]
+      },
+      "DependsOn": [
+        "appJenkins1"
+      ]
+    },
+    "JenkinsInstance": {
+      "Type": "AWS::OpsWorks::Instance",
+      "Properties": {
+        "Architecture": "x86_64",
+        "AvailabilityZone": "eu-central-1a",
+        "InstallUpdatesOnBoot": "true",
+        "InstanceType": "t2.small",
+        "Os": "Amazon Linux 2015.09",
+        "RootDeviceType": "ebs",
+        "StackId": {
+          "Ref": "FirstStack"
+        },
+        "LayerIds": [
+          {
+            "Ref": "layerJenkinsServer1"
+          }
+        ]
+      }
+    },
+    "s3policyjenkinschef": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "BucketName"
+        },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "AddPerm",
+              "Effect": "Allow",
+              "Principal": "*",
+              "Action": "s3:GetObject",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:aws:s3:::",
+                    {
+                      "Ref": "BucketName"
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    "JenkinsInstanceSecurityGroup" : {
+      "Type" : "AWS::EC2::SecurityGroup",
+      "Properties" : {
+        "GroupDescription" : "Enable HTTP access on the inbound port",
+        "SecurityGroupIngress" : [ {
+          "IpProtocol" : "tcp",
+          "FromPort" : "8080",
+          "ToPort" : "8080",
+          "CidrIp" : { "Ref" : "SSHLocation"}
+        } ]
+      }
+    }
+  },
+"Description": "test with opsworks installing jenkins"
+}
