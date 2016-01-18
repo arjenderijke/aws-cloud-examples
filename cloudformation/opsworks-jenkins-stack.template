@@ -12,6 +12,12 @@
       "ConstraintDescription" : "must be the name of an existing EC2 KeyPair."
     },
 
+    "CookBookFile": {
+      "Description" : "Name of the tarball that contains the cookbook",
+      "Type": "String",
+      "ConstraintDescription" : "must be the name tar.gz file that contains a chef cookbook"
+    },
+
     "SSHLocation" : {
       "Description" : "The IP address range that can be used to SSH to the EC2 instances",
       "Type": "String",
@@ -55,7 +61,7 @@
             { "Ref" : "AWS::Region" },
             ".amazonaws.com/",
             { "Ref": "BucketName" },
-            "/cookbooks.tar.gz"  ]]}
+            { "Ref": "CookBookFile" } ]]}
         },
         "UseOpsworksSecurityGroups": "true",
         "Attributes": {
