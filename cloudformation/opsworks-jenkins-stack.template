@@ -61,6 +61,7 @@
             { "Ref" : "AWS::Region" },
             ".amazonaws.com/",
             { "Ref": "BucketName" },
+            "/",
             { "Ref": "CookBookFile" } ]]}
         },
         "UseOpsworksSecurityGroups": "true",
