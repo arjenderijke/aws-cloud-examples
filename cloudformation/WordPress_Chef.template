@@ -41,7 +41,7 @@
 
     "DBName" : {
       "Default": "wordpressdb",
-      "Description" : "The WordPress database nae",
+      "Description" : "The WordPress database name",
       "Type": "String",
       "MinLength": "1",
       "MaxLength": "64",
