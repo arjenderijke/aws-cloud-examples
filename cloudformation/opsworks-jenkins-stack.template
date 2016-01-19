@@ -107,10 +107,10 @@
         },
         "CustomRecipes": {
           "Setup": [
-            "opsworks-first::default"
+            "aws_chef_jenkins::default"
           ],
           "Deploy": [
-            "opsworks-first::default"
+            "aws_chef_jenkins::default"
           ]
         },
         "CustomSecurityGroupIds" : [
