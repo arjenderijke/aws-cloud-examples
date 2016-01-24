@@ -106,11 +106,14 @@
           "Ref": "FirstStack"
         },
         "CustomRecipes": {
-          "Setup": [
-            "aws_chef_jenkins::default"
+          "Configure": [
+            "aws_chef_jenkins::JenkinsServer"
           ],
           "Deploy": [
-            "aws_chef_jenkins::default"
+            "aws_chef_jenkins::JenkinsServer"
+          ],
+          "Setup": [
+            "aws_chef_jenkins::JenkinsServer"
           ]
         },
         "CustomSecurityGroupIds" : [
@@ -120,6 +123,31 @@
       "DependsOn": [
         "appJenkins1"
       ]
+    },
+    "layerJenkinsSlave": {
+      "Type": "AWS::OpsWorks::Layer",
+      "Properties": {
+        "AutoAssignElasticIps": "false",
+        "AutoAssignPublicIps": "true",
+        "EnableAutoHealing": "true",
+        "Name": "Jenkins Slave",
+        "Shortname": "jenkinsslave",
+        "Type": "custom",
+        "StackId": {
+          "Ref": "FirstStack"
+        },
+        "CustomRecipes": {
+          "Configure": [
+            "aws_chef_jenkins::JenkinsSlave"
+          ],
+          "Deploy": [
+            "aws_chef_jenkins::JenkinsSlave"
+          ],
+          "Setup": [
+            "aws_chef_jenkins::JenkinsSlave"
+          ]
+        }
+      }
     },
     "JenkinsInstance": {
       "Type": "AWS::OpsWorks::Instance",
@@ -136,6 +164,25 @@
         "LayerIds": [
           {
             "Ref": "layerJenkinsServer1"
+          }
+        ]
+      }
+    },
+    "JenkinsSlaveInstance": {
+      "Type": "AWS::OpsWorks::Instance",
+      "Properties": {
+        "Architecture": "x86_64",
+        "AvailabilityZone": "eu-central-1a",
+        "InstallUpdatesOnBoot": "true",
+        "InstanceType": { "Ref" : "InstanceType" },
+        "Os": "Amazon Linux 2015.09",
+        "RootDeviceType": "ebs",
+        "StackId": {
+          "Ref": "FirstStack"
+        },
+        "LayerIds": [
+          {
+            "Ref": "layerJenkinsSlave"
           }
         ]
       }
