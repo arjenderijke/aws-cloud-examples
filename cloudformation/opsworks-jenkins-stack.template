@@ -121,7 +121,7 @@
         ]
       },
       "DependsOn": [
-        "appJenkins1"
+        "appJenkins1", "layerJenkinsSlave"
       ]
     },
     "layerJenkinsSlave": {
@@ -231,5 +231,6 @@
       }
     }
   },
-"Description": "test with opsworks installing jenkins"
+
+  "Description": "test with opsworks installing jenkins"
 }
