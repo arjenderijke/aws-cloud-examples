@@ -6,6 +6,12 @@
       "Type" : "String"
     },
 
+    "SecretsFileName" : {
+      "Description" : "The name of the file containing Jenkins account settings",
+      "Type" : "String",
+      "Default" : "secrets.json"
+    },
+
     "KeyName": {
       "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instances",
       "Type": "AWS::EC2::KeyPair::KeyName",
@@ -54,6 +60,9 @@
           "arn:aws:iam::",
           { "Ref" : "AWS::AccountId" },
           ":role/aws-opsworks-service-role" ]] },
+        "CustomJson" : {
+          "secretsfilename" : { "Ref" : "SecretsFileName" }
+        },
         "UseCustomCookbooks": "true",
         "CustomCookbooksSource" : {
           "Type" : "s3",
