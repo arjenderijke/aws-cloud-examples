@@ -177,7 +177,7 @@
         ]
       }
     },
-    "JenkinsSlaveInstance": {
+    "JenkinsAmznSlaveInstance": {
       "Type": "AWS::OpsWorks::Instance",
       "Properties": {
         "Architecture": "x86_64",
@@ -185,6 +185,25 @@
         "InstallUpdatesOnBoot": "true",
         "InstanceType": { "Ref" : "InstanceType" },
         "Os": "Amazon Linux 2015.09",
+        "RootDeviceType": "ebs",
+        "StackId": {
+          "Ref": "FirstStack"
+        },
+        "LayerIds": [
+          {
+            "Ref": "layerJenkinsSlave"
+          }
+        ]
+      }
+    },
+    "JenkinsUbuntuSlaveInstance": {
+      "Type": "AWS::OpsWorks::Instance",
+      "Properties": {
+        "Architecture": "x86_64",
+        "AvailabilityZone": "eu-central-1a",
+        "InstallUpdatesOnBoot": "true",
+        "InstanceType": { "Ref" : "InstanceType" },
+        "Os": "Ubuntu 14.04 LTS",
         "RootDeviceType": "ebs",
         "StackId": {
           "Ref": "FirstStack"
