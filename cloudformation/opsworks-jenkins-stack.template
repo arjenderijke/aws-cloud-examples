@@ -44,7 +44,7 @@
   },
 
   "Resources": {
-    "FirstStack": {
+    "JenkinsStack": {
       "Type": "AWS::OpsWorks::Stack",
       "Properties": {
         "DefaultAvailabilityZone": "eu-central-1a",
@@ -54,7 +54,7 @@
           ":instance-profile/aws-opsworks-ec2-role" ]] },
         "DefaultSshKeyName": { "Ref" : "KeyName" },
         "DefaultOs": "Amazon Linux 2015.09",
-        "Name": "FirstStack",
+        "Name": "JenkinsStack",
         "HostnameTheme": "Layer_Dependent",
         "ServiceRoleArn": { "Fn::Join" : ["", [
           "arn:aws:iam::",
@@ -90,7 +90,7 @@
         "Shortname": "jenkins",
         "Type": "other",
         "StackId": {
-          "Ref": "FirstStack"
+          "Ref": "JenkinsStack"
         },
         "AppSource": {
           "Type": "archive",
@@ -102,7 +102,7 @@
         }
       }
     },
-    "layerJenkinsServer1": {
+    "layerJenkinsServer": {
       "Type": "AWS::OpsWorks::Layer",
       "Properties": {
         "AutoAssignElasticIps": "false",
@@ -112,7 +112,7 @@
         "Shortname": "jenkinsserver",
         "Type": "custom",
         "StackId": {
-          "Ref": "FirstStack"
+          "Ref": "JenkinsStack"
         },
         "CustomRecipes": {
           "Configure": [
@@ -143,7 +143,7 @@
         "Shortname": "jenkinsslave",
         "Type": "custom",
         "StackId": {
-          "Ref": "FirstStack"
+          "Ref": "JenkinsStack"
         },
         "CustomRecipes": {
           "Configure": [
@@ -168,11 +168,11 @@
         "Os": "Amazon Linux 2015.09",
         "RootDeviceType": "ebs",
         "StackId": {
-          "Ref": "FirstStack"
+          "Ref": "JenkinsStack"
         },
         "LayerIds": [
           {
-            "Ref": "layerJenkinsServer1"
+            "Ref": "layerJenkinsServer"
           }
         ]
       }
@@ -187,7 +187,7 @@
         "Os": "Amazon Linux 2015.09",
         "RootDeviceType": "ebs",
         "StackId": {
-          "Ref": "FirstStack"
+          "Ref": "JenkinsStack"
         },
         "LayerIds": [
           {
@@ -206,14 +206,17 @@
         "Os": "Ubuntu 14.04 LTS",
         "RootDeviceType": "ebs",
         "StackId": {
-          "Ref": "FirstStack"
+          "Ref": "JenkinsStack"
         },
         "LayerIds": [
           {
             "Ref": "layerJenkinsSlave"
           }
         ]
-      }
+      },
+      "DependsOn": [
+        "JenkinsAmznSlaveInstance"
+      ]
     },
     "s3policyjenkinschef": {
       "Type": "AWS::S3::BucketPolicy",
