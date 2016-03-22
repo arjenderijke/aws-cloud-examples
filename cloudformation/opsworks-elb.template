@@ -6,6 +6,11 @@
       "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instances",
       "Type": "AWS::EC2::KeyPair::KeyName",
       "ConstraintDescription" : "must be the name of an existing EC2 KeyPair."
+    },
+    "VpcId": {
+      "Description" : "Name of default VPC id",
+      "Type": "AWS::EC2::VPC::Id",
+      "ConstraintDescription" : "must be the id of the default vpc."
     }
   },
 
@@ -45,6 +50,9 @@
         "Name": "Opsworks Server",
         "Shortname": "opsworksserver",
         "Type": "custom",
+	"CustomSecurityGroupIds" : [
+          { "Fn::GetAtt" : [ "OpsWorksSecurityGroup", "GroupId" ]}
+        ],
         "StackId": {
           "Ref": "OpsworksStack"
         }
@@ -69,8 +77,79 @@
           }
         ]
       }
+    },
+
+    "ELB": {
+      "Type": "AWS::ElasticLoadBalancing::LoadBalancer",
+      "Properties": {
+        "CrossZone" : "true",
+        "SecurityGroups": [ { "Ref": "ELBSecurityGroup" } ],
+        "AvailabilityZones": { "Fn::GetAZs" : "" },
+        "Listeners": [ {
+          "LoadBalancerPort": "80",
+          "InstancePort": "80",
+          "Protocol": "HTTP"
+        } ],
+        "HealthCheck": {
+          "Target": "HTTP:80/",
+          "HealthyThreshold": "3",
+          "UnhealthyThreshold": "5",
+          "Interval": "90",
+          "Timeout": "60"
+        }
+      }
+    },
+
+    "ELBAttachment": {
+      "Type": "AWS::OpsWorks::ElasticLoadBalancerAttachment",
+      "Properties": {
+        "ElasticLoadBalancerName": { "Ref": "ELB" },
+        "LayerId": { "Ref": "OpsworksLayer" }
+      }
+    },
+
+    "OpsWorksSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription" : "Allow inbound requests from the ELB to the OpsWorks instances",
+        "SecurityGroupIngress": [
+          { "IpProtocol": "tcp", "FromPort": "80", "ToPort": "80", "SourceSecurityGroupId": { "Ref": "ELBSecurityGroup" } }
+        ]
+      }
+    },
+
+    "ELBSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription" : "Allow inbound access to the ELB",
+	"VpcId": { "Ref" : "VpcId" },
+        "SecurityGroupIngress": [ {
+          "IpProtocol": "tcp",
+          "FromPort": "80",
+          "ToPort": "80",
+          "CidrIp": "0.0.0.0/0"
+        } ],
+        "SecurityGroupEgress": [ {
+          "IpProtocol": "tcp",
+          "FromPort": "80",
+          "ToPort": "80",
+          "CidrIp": "0.0.0.0/0"
+        } ]
+      }
     }
+
   },
 
-  "Description": "test with opsworks and elb"
+  "Description": "test with opsworks and elb",
+
+  "Outputs": {
+    "StackId": {
+      "Description": "Stack Id of newly created OpsWorks stack",
+      "Value": { "Ref": "OpsworksStack" }
+    },
+    "URL": {
+      "Description" : "URL for newly created application",
+      "Value" : { "Fn::Join" : ["", ["http://", { "Fn::GetAtt" : [ "ELB", "DNSName" ]}]] }
+    }
+  }
 }
