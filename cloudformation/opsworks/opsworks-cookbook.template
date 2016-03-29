@@ -14,6 +14,16 @@
       "ConstraintDescription" : "must be the name tar.gz file that contains a chef cookbook"
     },
 
+    "SSHLocation" : {
+      "Description" : "The IP address range that can be used to SSH to the EC2 instances",
+      "Type": "String",
+      "MinLength": "9",
+      "MaxLength": "18",
+      "Default": "0.0.0.0/0",
+      "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+      "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
+    },
+
     "KeyName": {
       "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instances",
       "Type": "AWS::EC2::KeyPair::KeyName",
@@ -77,6 +87,9 @@
             "jenkins_dev::default"
           ]
         },
+        "CustomSecurityGroupIds" : [
+          { "Fn::GetAtt" : [ "JenkinsServerSecurityGroup", "GroupId" ]}
+        ],
         "StackId": {
           "Ref": "OpsworksStack"
         }
@@ -100,6 +113,20 @@
             "Ref": "OpsworksLayer"
           }
         ]
+      }
+    },
+
+    "JenkinsServerSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription" : "Enable inboud connection to the OpsWorks instances",
+        "SecurityGroupIngress": [
+          { "IpProtocol": "tcp",
+	    "FromPort": "8080",
+	    "ToPort": "8080",
+	    "CidrIp" : { "Ref" : "SSHLocation"}
+	  }
+	]
       }
     },
 
