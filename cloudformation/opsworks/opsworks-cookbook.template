@@ -1,0 +1,141 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+
+  "Parameters" : {
+    "BucketName" : {
+      "Description" : "The EC2 Bucket",
+      "Type" : "String"
+    },
+
+    "CookBookFile": {
+      "Description" : "Name of the tarball that contains the cookbook",
+      "Type": "String",
+      "Default" : "cookbooks.tar.gz",
+      "ConstraintDescription" : "must be the name tar.gz file that contains a chef cookbook"
+    },
+
+    "KeyName": {
+      "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instances",
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "ConstraintDescription" : "must be the name of an existing EC2 KeyPair."
+    }
+  },
+
+  "Resources": {
+    "OpsworksStack": {
+      "Type": "AWS::OpsWorks::Stack",
+      "Properties": {
+        "DefaultAvailabilityZone": "eu-central-1a",
+        "DefaultInstanceProfileArn": { "Fn::Join" : ["", [
+          "arn:aws:iam::",
+          { "Ref" : "AWS::AccountId" },
+          ":instance-profile/aws-opsworks-ec2-role" ]] },
+        "DefaultSshKeyName": { "Ref" : "KeyName" },
+        "DefaultOs": "Amazon Linux 2015.09",
+        "Name": "OpsworksStack",
+        "HostnameTheme": "Layer_Dependent",
+        "ServiceRoleArn": { "Fn::Join" : ["", [
+          "arn:aws:iam::",
+          { "Ref" : "AWS::AccountId" },
+          ":role/aws-opsworks-service-role" ]] },
+        "UseCustomCookbooks": "true",
+        "CustomCookbooksSource" : {
+          "Type" : "s3",
+          "Url" : { "Fn::Join" : ["", ["https://s3.",
+            { "Ref" : "AWS::Region" },
+            ".amazonaws.com/",
+            { "Ref": "BucketName" },
+            "/",
+            { "Ref": "CookBookFile" } ]]}
+        },
+        "Attributes": {
+          "Color": "rgb(45, 114, 184)"
+        },
+        "ConfigurationManager": {
+          "Name": "Chef",
+          "Version": "12"
+        }
+      }
+    },
+    "OpsworksLayer": {
+      "Type": "AWS::OpsWorks::Layer",
+      "Properties": {
+        "AutoAssignElasticIps": "false",
+        "AutoAssignPublicIps": "true",
+        "EnableAutoHealing": "true",
+        "Name": "Opsworks Server",
+        "Shortname": "opsworksserver",
+        "Type": "custom",
+        "CustomRecipes": {
+          "Configure": [
+            "jenkins_dev::default"
+          ],
+          "Deploy": [
+            "jenkins_dev::default"
+          ],
+          "Setup": [
+            "jenkins_dev::default"
+          ]
+        },
+        "StackId": {
+          "Ref": "OpsworksStack"
+        }
+      }
+    },
+
+    "OpsworksInstance": {
+      "Type": "AWS::OpsWorks::Instance",
+      "Properties": {
+        "Architecture": "x86_64",
+        "AvailabilityZone": "eu-central-1a",
+        "InstallUpdatesOnBoot": "true",
+        "InstanceType": "t2.small",
+        "Os": "Amazon Linux 2015.09",
+        "RootDeviceType": "ebs",
+        "StackId": {
+          "Ref": "OpsworksStack"
+        },
+        "LayerIds": [
+          {
+            "Ref": "OpsworksLayer"
+          }
+        ]
+      }
+    },
+
+    "s3policyjenkinschef": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "BucketName"
+        },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "AddPerm",
+              "Effect": "Allow",
+              "Principal": "*",
+              "Action": "s3:GetObject",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:aws:s3:::",
+                    {
+                      "Ref": "BucketName"
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+
+  },
+
+  "Description": "cloudformation template for opsworks configuration using chef cookbook"
+}
