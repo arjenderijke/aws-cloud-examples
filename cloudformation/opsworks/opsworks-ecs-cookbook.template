@@ -78,13 +78,13 @@
         "Type": "custom",
         "CustomRecipes": {
           "Configure": [
-            "jenkins_dev::enable_auth"
+            "jenkins_dev::default"
           ],
           "Deploy": [
-            "jenkins_dev::enable_auth"
+            "jenkins_dev::default"
           ],
           "Setup": [
-            "jenkins_dev::enable_auth"
+            "jenkins_dev::default"
           ]
         },
         "CustomSecurityGroupIds" : [
@@ -164,5 +164,5 @@
 
   },
 
-  "Description": "cloudformation template for opsworks configuration using chef cookbook"
+  "Description": "cloudformation template for jenkins plus ecs in opsworks with configuration using chef cookbook"
 }
