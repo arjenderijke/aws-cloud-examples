@@ -59,13 +59,25 @@
             { "Ref": "CookBookFile" } ]]}
         },
         "Attributes": {
-          "Color": "rgb(45, 114, 184)"
+          "Color": "rgb(45, 114, 184)",
+          "EcsClusterArn" : {
+            "Fn::Join" : [ "", [ "arn:aws:ecs:", {
+                "Ref" : "AWS::Region"
+              }, ":", {
+                "Ref" : "AWS::AccountId"
+              }, ":cluster/", {
+                "Ref" : "ecsCluster"
+            } ] ]
+	  }
         },
         "ConfigurationManager": {
           "Name": "Chef",
           "Version": "12"
         }
-      }
+      },
+      "DependsOn": [
+        "ecsCluster"
+      ]
     },
     "OpsworksLayer": {
       "Type": "AWS::OpsWorks::Layer",
@@ -96,6 +108,43 @@
       }
     },
 
+    "ecsCluster" : {
+      "Type" : "AWS::ECS::Cluster"
+    },
+
+    "OpsworksEcsLayer": {
+      "Type": "AWS::OpsWorks::Layer",
+      "Properties": {
+        "Attributes" : {
+          "EcsClusterArn" : {
+            "Fn::Join" : [ "", [ "arn:aws:ecs:", {
+                "Ref" : "AWS::Region"
+              }, ":", {
+                "Ref" : "AWS::AccountId"
+              }, ":cluster/", {
+                "Ref" : "ecsCluster"
+            } ] ]
+          }
+        },
+        "AutoAssignElasticIps": "false",
+        "AutoAssignPublicIps": "true",
+	"CustomInstanceProfileArn" : "",
+	"EnableAutoHealing": "true",
+        "Name": "Opsworks ECS Cluster",
+        "Shortname": "opsworksecscluster",
+        "Type": "ecs-cluster",
+        "CustomSecurityGroupIds" : [
+          { "Fn::GetAtt" : [ "JenkinsServerSecurityGroup", "GroupId" ]}
+        ],
+        "StackId": {
+          "Ref": "OpsworksStack"
+        }
+      },
+      "DependsOn": [
+        "OpsworksStack"
+      ]
+    },
+
     "OpsworksInstance": {
       "Type": "AWS::OpsWorks::Instance",
       "Properties": {
@@ -111,6 +160,26 @@
         "LayerIds": [
           {
             "Ref": "OpsworksLayer"
+          }
+        ]
+      }
+    },
+
+    "OpsworksInstance": {
+      "Type": "AWS::OpsWorks::Instance",
+      "Properties": {
+        "AmiId": "ami-9aeb0af5",
+        "Architecture": "x86_64",
+        "AvailabilityZone": "eu-central-1a",
+        "InstallUpdatesOnBoot": "true",
+        "InstanceType": "t2.small",
+        "RootDeviceType": "ebs",
+        "StackId": {
+          "Ref": "OpsworksStack"
+        },
+        "LayerIds": [
+          {
+            "Ref": "OpsworksEcsLayer"
           }
         ]
       }
