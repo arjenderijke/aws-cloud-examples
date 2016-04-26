@@ -1,0 +1,93 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+
+  "Description": "cloudformation template for creating a custom resource using a lamda function in python",
+
+  "Parameters": {
+    "BucketStackName": {
+      "Description": "Name of an active CloudFormation stack. We will lookup the StackId",
+      "Type": "String",
+      "MinLength" : 1,
+      "MaxLength" : 255,
+      "AllowedPattern" : "^[a-zA-Z][-a-zA-Z0-9]*$",
+      "Default" : "SampleBucketName"
+    }
+  },
+
+  "Resources": {
+    "ListStackNameFunc": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Handler": "index.lambda_handler",
+        "Role": { "Fn::GetAtt" : ["LambdaExecutionRole", "Arn"] },
+        "Code": {
+          "ZipFile":  { "Fn::Join": ["\n", [
+            "import boto3",
+	    "import json",
+	    "import cfnresponse",
+            "client = boto3.client('cloudformation')",
+            "def lambda_handler(event, context):",
+	    { "Fn::Join": ["", [ 
+            "  response = client.describe_stacks(StackName='",
+	    { "Ref" : "BucketStackName" },
+	    "')"
+	    ]]},
+	    "  responseData = {}",
+	    "  responseData['data'] = response['Stacks'][0]['StackId']",
+            "  cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, \"CustomResourcePhysicalID\")"
+          ]]}
+        },        
+        "Runtime": "python2.7",
+        "Timeout": "10"
+      }
+    },
+
+    "BucketStackInfo": {
+      "Type": "AWS::CloudFormation::CustomResource",
+      "Properties": {
+        "ServiceToken": { "Fn::GetAtt" : ["ListStackNameFunc", "Arn"] },
+        "StackName": {
+          "Ref": "BucketStackName"
+        }
+      }
+    },
+    
+    "LambdaExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{
+              "Effect": "Allow",
+              "Principal": {"Service": ["lambda.amazonaws.com"]},
+              "Action": ["sts:AssumeRole"]
+          }]
+        },
+        "Path": "/",
+        "Policies": [{
+          "PolicyName": "root",
+          "PolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [{
+                "Effect": "Allow",
+                "Action": ["logs:CreateLogGroup","logs:CreateLogStream","logs:PutLogEvents"],
+                "Resource": "arn:aws:logs:*:*:*"
+            },
+	    {
+                "Effect": "Allow",
+                "Action": ["cloudformation:DescribeStacks"],
+                "Resource": "arn:aws:cloudformation:*:*:*"
+            }]
+          }
+        }]
+      }
+    }
+  },
+
+  "Outputs" : {
+    "StackName" : {
+      "Description" : "StackId",
+      "Value" : { "Fn::GetAtt": [ "BucketStackInfo", "data" ] } 
+    }
+  }
+}

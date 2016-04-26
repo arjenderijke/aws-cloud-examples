@@ -112,6 +112,65 @@
       "Type" : "AWS::ECS::Cluster"
     },
 
+    "RegisterCluster": {
+      "Type": "Custom::RegisterCluster",
+      "Properties": {
+        "ServiceToken": {
+	  "Fn::GetAtt" : ["OpsworksRegisterCluster", "Arn"] },
+        "EcsCluster": {
+	  "Ref" : "ecsCluster" 
+        }
+      }
+    },
+
+    "OpsworksRegisterCluster": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Handler": "index.handler",
+        "Role": { "Fn::GetAtt" : ["LambdaExecutionRole", "Arn"] },
+        "Code": {
+          "ZipFile":  { "Fn::Join": ["\n", [
+	    "import boto3",
+	    "client = boto3.client('opsworks')",
+            "def handler(event, context):",
+            "  response = client.register_ecs_cluster(",
+            "    EcsClusterArn=event.EcsClusterArn,",
+            "    StackId=event.StackId",
+            "  )",
+	    "  return response"
+          ]]}
+        },        
+        "Runtime": "python2.7",
+        "Timeout": "10"
+      }
+    },
+
+    "LambdaExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{
+              "Effect": "Allow",
+              "Principal": {"Service": ["lambda.amazonaws.com"]},
+              "Action": ["sts:AssumeRole"]
+          }]
+        },
+        "Path": "/",
+        "Policies": [{
+          "PolicyName": "root",
+          "PolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [{
+                "Effect": "Allow",
+                "Action": ["opsworks:*"],
+                "Resource": "arn:aws:opsworks:::*"
+            }]
+          }
+        }]
+      }
+    },
+
     "OpsworksEcsLayer": {
       "Type": "AWS::OpsWorks::Layer",
       "Properties": {
@@ -141,7 +200,7 @@
         }
       },
       "DependsOn": [
-        "OpsworksStack"
+        "OpsworksStack", "RegisterCluster"
       ]
     },
 
