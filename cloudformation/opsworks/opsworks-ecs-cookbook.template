@@ -118,7 +118,7 @@
         "ServiceToken": {
 	  "Fn::GetAtt" : ["OpsworksRegisterCluster", "Arn"] },
         "EcsCluster": {
-	  "Ref" : "ecsCluster" 
+	  "Ref" : "ecsCluster"
         }
       }
     },
@@ -139,7 +139,7 @@
             "  )",
 	    "  return response"
           ]]}
-        },        
+        },
         "Runtime": "python2.7",
         "Timeout": "10"
       }
