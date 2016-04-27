@@ -41,7 +41,7 @@
           { "Ref" : "AWS::AccountId" },
           ":instance-profile/aws-opsworks-ec2-role" ]] },
         "DefaultSshKeyName": { "Ref" : "KeyName" },
-        "DefaultOs": "Amazon Linux 2015.09",
+        "DefaultOs": "Amazon Linux 2016.03",
         "Name": "OpsworksStack",
         "HostnameTheme": "Layer_Dependent",
         "ServiceRoleArn": { "Fn::Join" : ["", [
@@ -113,31 +113,55 @@
     },
 
     "RegisterCluster": {
-      "Type": "Custom::RegisterCluster",
+      "Type": "AWS::CloudFormation::CustomResource",
       "Properties": {
         "ServiceToken": {
 	  "Fn::GetAtt" : ["OpsworksRegisterCluster", "Arn"] },
-        "EcsCluster": {
+        "EcsClusterName": {
 	  "Ref" : "ecsCluster"
+        },
+        "OpsworksStackId": {
+	  "Ref" : "OpsworksStack"
         }
-      }
+      },
+      "DependsOn": [
+        "OpsworksStack"
+      ]
     },
 
     "OpsworksRegisterCluster": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
-        "Handler": "index.handler",
+        "Handler": "index.lambda_handler",
         "Role": { "Fn::GetAtt" : ["LambdaExecutionRole", "Arn"] },
         "Code": {
           "ZipFile":  { "Fn::Join": ["\n", [
-	    "import boto3",
-	    "client = boto3.client('opsworks')",
-            "def handler(event, context):",
-            "  response = client.register_ecs_cluster(",
-            "    EcsClusterArn=event.EcsClusterArn,",
-            "    StackId=event.StackId",
-            "  )",
-	    "  return response"
+            "import boto3",
+	    "import json",
+	    "import cfnresponse",
+            "ecsclient = boto3.client('ecs')",
+            "opsworksclient = boto3.client('opsworks',",
+	    "  region_name='us-east-1',",
+	    "  endpoint_url='https://opsworks.us-east-1.amazonaws.com')",
+            "def lambda_handler(event, context):",
+            "  try:",
+            "    if (event['RequestType'] == 'Create'):",
+            "      ecscluster = ecsclient.describe_clusters(clusters=[",
+	    "        event['ResourceProperties']['EcsClusterName']])",
+            "      response = opsworksclient.register_ecs_cluster(",
+            "        EcsClusterArn=ecscluster['clusters'][0]['clusterArn'],",
+            "        StackId=event['ResourceProperties']['OpsworksStackId']",
+            "      )",
+	    "      responseData = {}",
+	    "      responseData['data'] = response['EcsClusterArn']",
+            "      cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, \"CustomResourcePhysicalID\")",
+	    "    else:",
+	    "      responseData = {}",
+            "      cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, \"CustomResourcePhysicalID\")",
+	    "  except Exception as e:",
+	    "    responseData = {}",
+	    "    responseData['error'] = e.message",
+            "    cfnresponse.send(event, context, cfnresponse.FAILED, responseData, \"CustomResourcePhysicalID\")"
           ]]}
         },
         "Runtime": "python2.7",
@@ -163,8 +187,18 @@
             "Version": "2012-10-17",
             "Statement": [{
                 "Effect": "Allow",
-                "Action": ["opsworks:*"],
-                "Resource": "arn:aws:opsworks:::*"
+                "Action": ["logs:CreateLogGroup","logs:CreateLogStream","logs:PutLogEvents"],
+                "Resource": "arn:aws:logs:*:*:*"
+            },
+	    {
+                "Effect": "Allow",
+                "Action": ["opsworks:RegisterEcsCluster"],
+                "Resource": "arn:aws:opsworks:*:*:*"
+            },
+	    {
+                "Effect": "Allow",
+                "Action": ["ecs:DescribeClusters"],
+                "Resource": "arn:aws:ecs:*:*:*"
             }]
           }
         }]
@@ -211,7 +245,7 @@
         "AvailabilityZone": "eu-central-1a",
         "InstallUpdatesOnBoot": "true",
         "InstanceType": "t2.small",
-        "Os": "Amazon Linux 2015.09",
+        "Os": "Amazon Linux 2016.03",
         "RootDeviceType": "ebs",
         "StackId": {
           "Ref": "OpsworksStack"
@@ -224,9 +258,10 @@
       }
     },
 
-    "OpsworksInstance": {
+    "OpsworksEcsInstance": {
       "Type": "AWS::OpsWorks::Instance",
       "Properties": {
+        "Os" : "Custom",
         "AmiId": "ami-9aeb0af5",
         "Architecture": "x86_64",
         "AvailabilityZone": "eu-central-1a",
