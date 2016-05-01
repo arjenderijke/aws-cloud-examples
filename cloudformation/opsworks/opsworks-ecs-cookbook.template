@@ -44,6 +44,13 @@
         "DefaultOs": "Amazon Linux 2016.03",
         "Name": "OpsworksStack",
         "HostnameTheme": "Layer_Dependent",
+	"CustomJson" : {
+	  "aws_opsworks_ecs" : {
+            "opsworks_ecs" : {
+              "ecs_cluster_name" : { "Ref" : "ecsCluster" }
+	    }
+	  }
+        },
         "ServiceRoleArn": { "Fn::Join" : ["", [
           "arn:aws:iam::",
           { "Ref" : "AWS::AccountId" },
@@ -215,17 +222,31 @@
               }, ":", {
                 "Ref" : "AWS::AccountId"
               }, ":cluster/", {
-                "Ref" : "ecsCluster"
+	         "Ref" : "ecsCluster"
             } ] ]
           }
         },
         "AutoAssignElasticIps": "false",
         "AutoAssignPublicIps": "true",
-	"CustomInstanceProfileArn" : "",
+	"CustomInstanceProfileArn" : { "Fn::Join" : ["", [
+          "arn:aws:iam::",
+          { "Ref" : "AWS::AccountId" },
+          ":instance-profile/ecsInstanceRole" ]] },
 	"EnableAutoHealing": "true",
         "Name": "Opsworks ECS Cluster",
         "Shortname": "opsworksecscluster",
         "Type": "ecs-cluster",
+        "CustomRecipes": {
+          "Configure": [
+            "jenkins_dev::ecs_cluster"
+          ],
+          "Deploy": [
+            "jenkins_dev::ecs_cluster"
+          ],
+          "Setup": [
+            "jenkins_dev::ecs_cluster"
+          ]
+        },
         "CustomSecurityGroupIds" : [
           { "Fn::GetAtt" : [ "JenkinsServerSecurityGroup", "GroupId" ]}
         ],
@@ -234,7 +255,7 @@
         }
       },
       "DependsOn": [
-        "OpsworksStack", "RegisterCluster"
+        "RegisterCluster"
       ]
     },
 
@@ -258,26 +279,6 @@
       }
     },
 
-    "OpsworksEcsInstance": {
-      "Type": "AWS::OpsWorks::Instance",
-      "Properties": {
-        "Os" : "Custom",
-        "AmiId": "ami-9aeb0af5",
-        "Architecture": "x86_64",
-        "AvailabilityZone": "eu-central-1a",
-        "InstallUpdatesOnBoot": "true",
-        "InstanceType": "t2.small",
-        "RootDeviceType": "ebs",
-        "StackId": {
-          "Ref": "OpsworksStack"
-        },
-        "LayerIds": [
-          {
-            "Ref": "OpsworksEcsLayer"
-          }
-        ]
-      }
-    },
 
     "JenkinsServerSecurityGroup": {
       "Type": "AWS::EC2::SecurityGroup",
