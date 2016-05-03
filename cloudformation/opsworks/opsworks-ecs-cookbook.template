@@ -44,13 +44,6 @@
         "DefaultOs": "Amazon Linux 2016.03",
         "Name": "OpsworksStack",
         "HostnameTheme": "Layer_Dependent",
-	"CustomJson" : {
-	  "aws_opsworks_ecs" : {
-            "opsworks_ecs" : {
-              "ecs_cluster_name" : { "Ref" : "ecsCluster" }
-	    }
-	  }
-        },
         "ServiceRoleArn": { "Fn::Join" : ["", [
           "arn:aws:iam::",
           { "Ref" : "AWS::AccountId" },
@@ -279,6 +272,25 @@
       }
     },
 
+    "OpsworksEcsInstance": {
+      "Type": "AWS::OpsWorks::Instance",
+      "Properties": {
+        "Architecture": "x86_64",
+        "AvailabilityZone": "eu-central-1a",
+        "InstallUpdatesOnBoot": "true",
+        "InstanceType": "t2.small",
+        "Os": "Amazon Linux 2016.03",
+        "RootDeviceType": "ebs",
+        "StackId": {
+          "Ref": "OpsworksStack"
+        },
+        "LayerIds": [
+          {
+            "Ref": "OpsworksEcsLayer"
+          }
+        ]
+      }
+    },
 
     "JenkinsServerSecurityGroup": {
       "Type": "AWS::EC2::SecurityGroup",
