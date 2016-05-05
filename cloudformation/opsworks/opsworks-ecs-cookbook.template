@@ -58,14 +58,6 @@
             "/",
             { "Ref": "CookBookFile" } ]]}
         },
-	"CustomJson" : {
-	  "ecsuser_accesskey" : {
-	    "Ref" : "ecsAccessKey"
-	  },
-          "ecsuser_secretkey" : {
-            "Fn::GetAtt" : [ "ecsAccessKey", "SecretAccessKey" ]
-	  }
-        },
         "Attributes": {
           "Color": "rgb(45, 114, 184)",
           "EcsClusterArn" : {
@@ -92,6 +84,7 @@
       "Properties": {
         "AutoAssignElasticIps": "false",
         "AutoAssignPublicIps": "true",
+	"CustomInstanceProfileArn" : { "Fn::GetAtt" : [ "jenkinsInstanceProfile", "Arn" ]},
         "EnableAutoHealing": "true",
         "Name": "Opsworks Server",
         "Shortname": "opsworksserver",
@@ -335,20 +328,35 @@
       }
     },
 
-    "ecsAccessKey" : {
-      "Type" : "AWS::IAM::AccessKey",
-      "Properties" : {
-        "UserName" : { "Ref" : "ecsUser" }
+    "jenkinsInstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Path": "/",
+        "Roles": [ {
+          "Ref": "ecsClusterRole"
+	  } ]
       }
     },
 
-    "ecsUser" : {
-      "Type" : "AWS::IAM::User",
+    "ecsClusterRole" : {
+      "Type" : "AWS::IAM::Role",
       "Properties" : {
-        "Path" : "/",
-        "LoginProfile" : {
-          "Password" : "myP@ssW0rd"
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [ {
+            "Effect": "Allow",
+            "Principal": {"Service": ["ecs.amazonaws.com"]},
+            "Action": ["sts:AssumeRole"]
+          },
+	  {
+            "Effect": "Allow",
+            "Principal": {
+              "Service": [ "ec2.amazonaws.com" ]
+            },
+            "Action": [ "sts:AssumeRole" ]
+          }]
         },
+        "Path" : "/",
         "Policies" : [ {
           "PolicyName" : "ecsclusteruser",
           "PolicyDocument" : {
