@@ -58,6 +58,14 @@
             "/",
             { "Ref": "CookBookFile" } ]]}
         },
+	"CustomJson" : {
+	  "ecsuser_accesskey" : {
+	    "Ref" : "ecsAccessKey"
+	  },
+          "ecsuser_secretkey" : {
+            "Fn::GetAtt" : [ "ecsAccessKey", "SecretAccessKey" ]
+	  }
+        },
         "Attributes": {
           "Color": "rgb(45, 114, 184)",
           "EcsClusterArn" : {
@@ -90,13 +98,13 @@
         "Type": "custom",
         "CustomRecipes": {
           "Configure": [
-            "jenkins_dev::default"
+            "jenkins_dev::ecs_cluster"
           ],
           "Deploy": [
-            "jenkins_dev::default"
+            "jenkins_dev::ecs_cluster"
           ],
           "Setup": [
-            "jenkins_dev::default"
+            "jenkins_dev::ecs_cluster"
           ]
         },
         "CustomSecurityGroupIds" : [
@@ -229,17 +237,6 @@
         "Name": "Opsworks ECS Cluster",
         "Shortname": "opsworksecscluster",
         "Type": "ecs-cluster",
-        "CustomRecipes": {
-          "Configure": [
-            "jenkins_dev::ecs_cluster"
-          ],
-          "Deploy": [
-            "jenkins_dev::ecs_cluster"
-          ],
-          "Setup": [
-            "jenkins_dev::ecs_cluster"
-          ]
-        },
         "CustomSecurityGroupIds" : [
           { "Fn::GetAtt" : [ "JenkinsServerSecurityGroup", "GroupId" ]}
         ],
@@ -336,8 +333,51 @@
           ]
         }
       }
-    }
+    },
 
+    "ecsAccessKey" : {
+      "Type" : "AWS::IAM::AccessKey",
+      "Properties" : {
+        "UserName" : { "Ref" : "ecsUser" }
+      }
+    },
+
+    "ecsUser" : {
+      "Type" : "AWS::IAM::User",
+      "Properties" : {
+        "Path" : "/",
+        "LoginProfile" : {
+          "Password" : "myP@ssW0rd"
+        },
+        "Policies" : [ {
+          "PolicyName" : "ecsclusteruser",
+          "PolicyDocument" : {
+            "Version": "2012-10-17",
+            "Statement" : [ {
+              "Effect" : "Allow",
+              "Action" : [ "ecs:ListClusters" ],
+              "Resource" : [ "*" ]
+            }, {
+              "Effect" : "Allow",
+              "Action" : [
+                "ecs:DescribeClusters",
+                "ecs:RegisterTaskDefinition",
+                "ecs:RunTask",
+                "ecs:StopTask"
+              ],
+              "Resource" : [ {
+                 "Fn::Join" : [ "", [ "arn:aws:ecs:", {
+                   "Ref" : "AWS::Region"
+                 }, ":", {
+                   "Ref" : "AWS::AccountId"
+                 }, ":cluster/", {
+	           "Ref" : "ecsCluster"
+               } ] ]
+            } ]
+        } ] }
+      } ]
+    }
+    }
   },
 
   "Description": "cloudformation template for jenkins plus ecs in opsworks with configuration using chef cookbook"
