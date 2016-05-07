@@ -44,6 +44,9 @@
         "DefaultOs": "Amazon Linux 2016.03",
         "Name": "OpsworksStack",
         "HostnameTheme": "Layer_Dependent",
+	"CustomJson" : {
+          "account_id" : { "Ref" : "AWS::AccountId" }
+        },
         "ServiceRoleArn": { "Fn::Join" : ["", [
           "arn:aws:iam::",
           { "Ref" : "AWS::AccountId" },
@@ -373,15 +376,7 @@
                 "ecs:RunTask",
                 "ecs:StopTask"
               ],
-              "Resource" : [ {
-                 "Fn::Join" : [ "", [ "arn:aws:ecs:", {
-                   "Ref" : "AWS::Region"
-                 }, ":", {
-                   "Ref" : "AWS::AccountId"
-                 }, ":cluster/", {
-	           "Ref" : "ecsCluster"
-               } ] ]
-            } ]
+              "Resource" : [ "*" ]
         } ] }
       } ]
     }
